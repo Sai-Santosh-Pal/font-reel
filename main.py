@@ -1,3 +1,4 @@
+
 """
 font_reel.py
 Create a vertical "reel" (1080x1920) MP4 where the SAME text is displayed
@@ -7,14 +8,14 @@ This script auto-installs its dependencies:
     pillow, requests, imageio[ffmpeg]
 """
 
-import os, sys, subprocess, shutil
+import os, sys, subprocess
 from pathlib import Path
 
 # ---- Auto-install required packages ----
 REQUIRED = ["pillow", "requests", "imageio[ffmpeg]"]
 for pkg in REQUIRED:
     try:
-        __import__(pkg.split("[")[0])  # import pillow, requests, imageio
+        __import__(pkg.split("[")[0])
     except ImportError:
         print(f"Installing {pkg} ...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
@@ -24,9 +25,8 @@ import requests
 import imageio.v3 as iio
 from PIL import Image, ImageDraw, ImageFont
 
-
 # ---- Configuration ----
-TEXT = "YOUR TEXT HERE"
+TEXT = "YOUR TEXT HERE"  # 👈 change this to your reel text
 OUTPUT = "font_reel_1080x1920.mp4"
 WIDTH, HEIGHT = 1080, 1920
 FPS = 30
@@ -60,6 +60,18 @@ def download_font(relative_path: str, dest_dir: Path):
     return None
 
 
+def get_text_size(draw, text, font):
+    """Return (w, h) of text, works for both new and old Pillow."""
+    try:
+        # Pillow ≥10
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    except AttributeError:
+        # Pillow <10
+        w, h = draw.textsize(text, font=font)
+    return w, h
+
+
 def fit_font(draw, text, font_path, max_width, max_height):
     lo, hi = 6, 400
     best = None
@@ -69,7 +81,7 @@ def fit_font(draw, text, font_path, max_width, max_height):
             f = ImageFont.truetype(font_path, mid)
         except:
             return None
-        w, h = draw.textsize(text, font=f)
+        w, h = get_text_size(draw, text, f)
         if w <= max_width and h <= max_height:
             best = f
             lo = mid + 1
@@ -86,7 +98,7 @@ def create_frame(text, font_path):
     font = fit_font(draw, text, font_path, max_w, max_h)
     if font is None:
         font = ImageFont.load_default()
-    w, h = draw.textsize(text, font=font)
+    w, h = get_text_size(draw, text, font)
     x = (WIDTH - w) // 2
     y = (HEIGHT - h) // 2
     draw.text((x, y), text, font=font, fill=(255, 255, 255))
@@ -101,7 +113,7 @@ def main():
             font_files.append(local)
 
     if not font_files:
-        print("No fonts downloaded, aborting.")
+        print("❌ No fonts downloaded, aborting.")
         return
 
     frames = []
